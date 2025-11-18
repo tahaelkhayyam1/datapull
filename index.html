@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maritime Directory - La Seyne-sur-Mer</title>
+    
+    <!-- Tailwind CSS for styling (loaded via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .card-zoom:hover img { transform: scale(1.05); }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <!-- Header & Upload -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+            <div>
+                <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">
+                    <i class="fa-solid fa-anchor text-blue-600 mr-2"></i>Shipyards & Services
+                </h1>
+                <p class="text-slate-500 mt-2">La Seyne-sur-Mer Maritime Directory</p>
+            </div>
+
+            <!-- File Upload Section -->
+            <div class="flex flex-col items-end gap-2">
+                <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Upload NDJSON File</span>
+                </label>
+                <input type="file" id="fileInput" accept=".ndjson,.jsonl,.txt,.json" class="hidden">
+                <span id="fileNameDisplay" class="text-xs text-slate-400">No file selected (Using demo data)</span>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="flex justify-between items-center mb-6 px-1">
+             <div class="bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 text-sm font-medium text-slate-600">
+                <span id="totalCount" class="text-blue-600 font-bold text-lg">0</span> Establishments found
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-10 sticky top-4 z-30 backdrop-blur-xl bg-white/90">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                
+                <!-- Search -->
+                <div class="md:col-span-5 relative">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Search</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="searchInput" placeholder="Search name, services..." 
+                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="md:col-span-4">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Category</label>
+                    <div class="relative">
+                        <select id="categorySelect" class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer">
+                            <option value="All">All Categories</option>
+                            <!-- Options injected by JS -->
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-3.5 text-slate-400 pointer-events-none text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Rating Filter -->
+                <div class="md:col-span-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Min Rating</label>
+                        <span id="ratingValue" class="text-sm font-bold text-blue-600">0.0</span>
+                    </div>
+                    <input type="range" id="ratingRange" min="0" max="5" step="0.5" value="0"
+                        class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>Any</span>
+                        <span>5.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid Content -->
+        <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Cards injected by JS -->
+        </div>
+
+        <!-- No Results State -->
+        <div id="noResults" class="hidden text-center py-20">
+            <div class="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-sailboat text-3xl text-slate-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-700">No shipyards found</h3>
+            <p class="text-slate-500 mt-2">Try adjusting your filters or search terms.</p>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // --- 1. DEFAULT DEMO DATA (NDJSON Format) ---
+        const demoNDJSON = `
+{"place_id": "ChIJtfWwllQbyRIR4qd9kxAcONg", "name": "Esprit Sud", "description": "Chantier naval pour les bateaux de plaisance. Spécialisé en refit, composite, carénage, électricité et électronique nautique, vente neuf et d'occasion.", "rating": 4.8, "reviews": 20, "main_category": "Shipyard", "phone": "+33 4 98 00 38 46", "website": "http://www.espritsud.net/", "address": "430 Cor Philippe Giovannini, 83500 La Seyne-sur-Mer", "featured_image": "https://lh3.ggpht.com/p/AC9h4noLYqHs9QyuwMk8yhBbCq4iSqVHosSYVWOL48NoK19yAEqa2UZ-QDwGsU0ohQuNhAlJCev8SDNvsROqFq7GMAWFKeZAEh2vf0dEdSSs125C3ZEAnrcDroF82-uegnv2UioUv53j=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJ2U6mplUbyRIR8EuFI-4wSRU", "name": "Chantier Naval Dettori", "description": "Créée il y a 60 ans en construisant des pointus, notre entreprise a sut évoluer avec son temps et devenir une grande affaire familiale. Concessionnaire des marques Jeanneau et Zodiac.", "rating": 4.4, "reviews": 33, "main_category": "Boat repair shop", "phone": "+33 4 94 94 66 38", "website": "http://www.dettori-marine.com/", "address": "Espace Joseph Grimaud, 430 Cor Philippe Giovannini", "featured_image": "https://lh3.ggpht.com/p/AC9h4novk6dQjak0UkpaqVGDMhtiYE1rnwhb3a3sUvkzbieHBVfgQ3sajyp-IRPHcaweGbcK_h4CB3v0ryH6mAVdHed2njbZaw6QyvPZw3Ba9U0f1qCB75DPcYO1BrASTp5zYof9Nzje=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJRUYEczYFyRIRpZuyvO0F-O0", "name": "Monaco Marine La Seyne-Toulon", "description": "Shipyard specializing in superyacht refit and repair.", "rating": 4.2, "reviews": 16, "main_category": "Shipyard", "phone": "+33 4 94 10 93 00", "website": "http://monacomarine.com/", "address": "Grimaud, ESPACE, Cor Philippe Giovannini", "featured_image": "https://lh3.ggpht.com/p/AC9h4npwZDfzGgstfycNon-9jbHbvFrYgnG6uAPQJA2OCaic_84FI4iEL_tMX8S-W7i-V2cmyFYS9JGwRWuRuq2gj3E0F3j_0lKc4Z9edRMWKROlv071VXG7rVeZJ5wwbXsSttkwWl6rFg=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJN8l81FQbyRIRWB74E7zaBy4", "name": "Plaisance Yachting Services", "description": "Spécialisé dans le stockage à sec et l’hivernage. N'hésitez pas à nous contacter pour vos besoins spécifiques.", "rating": 5, "reviews": 14, "main_category": "Shipyard", "phone": "+33 4 94 62 50 79", "website": "https://chantier-pys.com/", "address": "430 Cor Philippe Giovannini", "featured_image": "https://lh3.ggpht.com/p/AF1QipMmana98AECMErjvAf7CF2tgRR_9x4e8LaclkZ3=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJsY3d9akEyRIR9PApQfXSuec", "name": "Ex-Atelier mécanique", "description": "Ancien site industriel, actuellement fermé.", "rating": 4.8, "reviews": 4, "main_category": "Boat builders", "address": "750 Cr Toussaint Merle Maire", "featured_image": "https://lh3.ggpht.com/p/AC9h4nrY8lQ6zjOOsI8hGyNSvEIIwQgpknXagODzhrhecoJkid-ckhuPvL_HlEwWBF4P4o4qs96FeqVW3yugn2LgHpkhpJuvKk_Rp_apKpIKIOSCWDl3BhiPEEY3120V-3Ve1-4IflY=s1024", "is_permanently_closed": true}
+{"place_id": "ChIJ8QLNIZ4DyRIR71cKEGoegB4", "name": "CAPIAN MARINE", "description": "Spécialisés dans la restauration, la réparation, l'entretien et la maintenance navale. Dépannage moteur diesel.", "rating": 5, "reviews": 2, "main_category": "Shipyard", "phone": "+33 6 15 47 26 77", "website": "https://www.capian-marine.fr/", "address": "2523 Av. Pierre Auguste Renoir", "featured_image": "https://lh3.ggpht.com/p/AC9h4no_ncoCyTu3W6BlR9SDryJm6u7riQg6XGY5yDXhXVqLJgghHiV7by1mum3l3y3udrWZAXPOeIXs0gw9jJK-cBc0VarHY60ULGhvC_6a9i9ItkQXVGIo3D71wqnLsJhxN-zq_FzpAQ=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJxZFqILwEyRIRGKj61e93haw", "name": "ROBIN MARINE", "description": "Spécialiste traitement osmose, propulseur, guindeau. 2000 m² extérieur pour hivernage.", "rating": 4.6, "reviews": 20, "main_category": "Boat repair shop", "phone": "+33 4 94 06 37 13", "address": "Technopole Brégaillon Nord", "featured_image": "https://lh3.ggpht.com/p/AF1QipNRcHV_T80gW7Upzk9iLuLOInDfWEK_bdVIvEp9=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJK0ZzeFwDyRIRtqLGpz-FSK0", "name": "Quo Vadis Beneteau", "description": "Concessionnaire Bénéteau, Brig, SeaGame. Vente neuf et occasion, magasin USHIP.", "rating": 3.7, "reviews": 35, "main_category": "Boat dealer", "phone": "+33 4 94 94 43 32", "website": "https://www.rc-marine.fr/fr/", "address": "430 Cor Philippe Giovannini", "featured_image": "https://lh3.ggpht.com/p/AF1QipOiY-i_r9ixnERtagdQoEX70dS1BrT2ric-AWHd=s1024", "is_permanently_closed": false}
+{"place_id": "ChIJvwZnQWMzUEERbOnelEXJgaU", "name": "LP COMPOSITES", "description": "Tous services en matériaux composites dans le nautisme et la piscine.", "rating": 5, "reviews": 1, "main_category": "Shipyard", "phone": "+33 6 19 02 75 18", "website": "http://lp-composites.com/", "featured_image": "https://lh3.ggpht.com/p/AF1QipNFtT0Yu7_EhMxc9saQay--z9gEllWGhyPS-RBZ=s1024", "is_permanently_closed": false}
+`;
+
+        let allData = [];
+
+        // --- 2. NDJSON PARSER ---
+        function parseNDJSON(textData) {
+            const lines = textData.trim().split('\n');
+            const parsed = [];
+            lines.forEach(line => {
+                try {
+                    if (line.trim()) parsed.push(JSON.parse(line));
+                } catch (e) {
+                    console.error("Error parsing line:", line);
+                }
+            });
+            return parsed;
+        }
+
+        // --- 3. INITIALIZATION ---
+        function init(dataString) {
+            // Parse provided data or demo data
+            allData = parseNDJSON(dataString);
+            
+            // Setup Categories
+            populateCategories();
+            
+            // Initial Render
+            filterAndRender();
+        }
+
+        // --- 4. FILE UPLOAD LOGIC ---
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileNameDisplay.textContent = `Loading: ${file.name}`;
+            fileNameDisplay.className = "text-xs text-blue-600 font-semibold animate-pulse";
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                init(content);
+                
+                // Update UI feedback
+                fileNameDisplay.textContent = `Loaded: ${file.name}`;
+                fileNameDisplay.className = "text-xs text-green-600 font-bold";
+            };
+
+            reader.onerror = function() {
+                fileNameDisplay.textContent = "Error reading file";
+                fileNameDisplay.className = "text-xs text-red-600 font-bold";
+            };
+
+            reader.readAsText(file);
+        });
+
+
+        // --- 5. UI LOGIC ---
+
+        const searchInput = document.getElementById('searchInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const ratingRange = document.getElementById('ratingRange');
+        const ratingValue = document.getElementById('ratingValue');
+        const grid = document.getElementById('cardsGrid');
+        const totalCount = document.getElementById('totalCount');
+        const noResults = document.getElementById('noResults');
+
+        // Event Listeners
+        searchInput.addEventListener('input', filterAndRender);
+        categorySelect.addEventListener('change', filterAndRender);
+        ratingRange.addEventListener('input', (e) => {
+            ratingValue.textContent = e.target.value;
+            filterAndRender();
+        });
+
+        function populateCategories() {
+            // Clear existing options except the first one
+            categorySelect.innerHTML = '<option value="All">All Categories</option>';
+
+            // Get unique categories
+            const categories = [...new Set(allData.map(item => item.main_category))].filter(Boolean).sort();
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categorySelect.appendChild(option);
+            });
+        }
+
+        function filterAndRender() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCategory = categorySelect.value;
+            const minRating = parseFloat(ratingRange.value);
+
+            const filtered = allData.filter(item => {
+                const matchesSearch = (item.name || '').toLowerCase().includes(searchTerm) || 
+                                      (item.description || '').toLowerCase().includes(searchTerm);
+                const matchesCategory = selectedCategory === 'All' || item.main_category === selectedCategory;
+                const matchesRating = (item.rating || 0) >= minRating;
+
+                return matchesSearch && matchesCategory && matchesRating;
+            });
+
+            renderGrid(filtered);
+        }
+
+        function renderGrid(items) {
+            grid.innerHTML = '';
+            totalCount.textContent = items.length;
+
+            if (items.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full card-zoom';
+                
+                // Rating Stars Generation
+                const stars = generateStars(item.rating);
+                
+                // Handle missing image
+                const imageUrl = item.featured_image ? item.featured_image : 'https://placehold.co/600x400?text=No+Image';
+
+                // Status Badge
+                const statusBadge = item.is_permanently_closed 
+                    ? `<span class="absolute top-3 right-3 bg-red-500/90 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-lg shadow-sm">CLOSED</span>`
+                    : `<span class="absolute top-3 right-3 bg-emerald-500/90 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-lg shadow-sm">OPEN</span>`;
+
+                card.innerHTML = `
+                    <!-- Image Section -->
+                    <div class="relative h-48 overflow-hidden bg-slate-200">
+                        <img src="${imageUrl}" alt="${item.name}" class="w-full h-full object-cover transition-transform duration-700" onerror="this.src='https://placehold.co/600x400?text=Image+Error'">
+                        ${statusBadge}
+                        <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        <span class="absolute bottom-3 left-3 text-white text-xs font-bold uppercase tracking-wide bg-black/30 backdrop-blur px-2 py-0.5 rounded border border-white/20">
+                            ${item.main_category || 'Uncategorized'}
+                        </span>
+                    </div>
+
+                    <!-- Content Section -->
+                    <div class="p-5 flex-grow flex flex-col">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-bold text-slate-800 leading-tight hover:text-blue-600 transition-colors cursor-pointer">${item.name || 'Unknown Name'}</h3>
+                        </div>
+
+                        <div class="flex items-center mb-3 space-x-2">
+                            <div class="flex text-yellow-400 text-xs">${stars}</div>
+                            <span class="text-xs text-slate-400 font-medium">(${item.reviews || 0} reviews)</span>
+                        </div>
+
+                        <p class="text-slate-500 text-sm line-clamp-3 mb-4 flex-grow">
+                            ${item.description || "No description available."}
+                        </p>
+
+                        <!-- Footer / Contact -->
+                        <div class="pt-4 border-t border-slate-100 space-y-2 text-sm">
+                            ${item.address ? `
+                                <div class="flex items-start text-slate-500">
+                                    <i class="fa-solid fa-location-dot mt-1 w-5 text-slate-300"></i>
+                                    <span class="truncate">${item.address}</span>
+                                </div>` : ''}
+                            
+                            ${item.phone ? `
+                                <div class="flex items-center text-slate-500">
+                                    <i class="fa-solid fa-phone w-5 text-slate-300"></i>
+                                    <a href="tel:${item.phone}" class="hover:text-blue-600 transition-colors">${item.phone}</a>
+                                </div>` : ''}
+                        </div>
+
+                        <div class="mt-5 flex gap-2">
+                            ${item.website ? `
+                                <a href="${item.website}" target="_blank" class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white py-2 rounded-lg text-center text-sm font-semibold transition-all duration-200 border border-blue-100">
+                                    Website
+                                </a>` : ''}
+                            ${item.place_id ? `
+                            <a href="https://www.google.com/maps/place/?q=place_id:${item.place_id}" target="_blank" class="flex-1 bg-slate-50 text-slate-600 hover:bg-slate-800 hover:text-white py-2 rounded-lg text-center text-sm font-semibold transition-all duration-200 border border-slate-200">
+                                Maps
+                            </a>` : ''}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function generateStars(rating) {
+            if (!rating) return '';
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    starsHtml += '<i class="fa-solid fa-star"></i>';
+                } else if (i === Math.ceil(rating) && !Number.isInteger(rating)) {
+                    starsHtml += '<i class="fa-solid fa-star-half-stroke"></i>';
+                } else {
+                    starsHtml += '<i class="fa-regular fa-star text-slate-300"></i>';
+                }
+            }
+            return starsHtml;
+        }
+
+        // Start App with Demo Data initially
+        init(demoNDJSON);
+
+    </script>
+</body>
+</html>
