@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datapull - preview</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --secondary-color: #f5f6fa;
+            --card-bg: #ffffff;
+            --text-main: #2d3436;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-main);
+            padding-bottom: 50px;
+        }
+
+        /* Navbar styling */
+        .navbar {
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+        }
+
+        /* Controls Section */
+        .controls-section {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-top: -30px;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Card Styling */
+        .place-card {
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--card-bg);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .place-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+            background-color: #eee;
+        }
+
+        .card-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .rating-badge {
+            background-color: #ffeaa7;
+            color: #2d3436;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .category-badge {
+            background-color: #dfe6e9;
+            color: #636e72;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            display: inline-block;
+            text-transform: capitalize;
+        }
+
+        .btn-details {
+            background: linear-gradient(to right, #a29bfe, #6c5ce7);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            margin-top: auto;
+            padding: 8px;
+            transition: opacity 0.2s;
+        }
+        .btn-details:hover {
+            opacity: 0.9;
+            color: white;
+        }
+
+        /* Modal Styling */
+        .modal-header {
+            background: linear-gradient(to right, #a29bfe, #6c5ce7);
+            color: white;
+        }
+        .modal-title {
+            font-weight: 600;
+        }
+        .btn-close {
+            filter: invert(1);
+        }
+        
+        .nav-tabs .nav-link {
+            color: #636e72;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+            color: #6c5ce7;
+            border-bottom: 3px solid #6c5ce7;
+        }
+
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .keyword-tag {
+            background-color: #dfe6e9;
+            color: #2d3436;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+
+        /* Loading Spinner */
+        #loader {
+            display: none;
+            text-align: center;
+            padding: 50px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            font-size: 0.85rem;
+        }
+
+        .highlight-text {
+            color: #6c5ce7;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-5">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-shop me-2"></i> Salons de Massage Viz</a>
+            <div class="ms-auto text-white">
+                <small id="record-count">Chargement...</small>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        
+        <!-- Controls / Filters -->
+        <div class="controls-section">
+            <div class="row g-3 align-items-end">
+                
+                <!-- Status / Source -->
+                <div class="col-md-3">
+                     <div class="d-flex align-items-center text-muted status-bar" style="height: 38px;">
+                        <i class="fa-solid fa-database me-2 text-primary"></i>
+                        <div class="lh-1">
+                            <span class="d-block fw-bold">Source :</span>
+                            <span id="sourceStatus" class="text-truncate d-block">Données intégrées</span>
+                        </div>
+                     </div>
+                </div>
+
+                <!-- Search -->
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Recherche</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nom, rue...">
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Catégorie</label>
+                    <select id="categorySelect" class="form-select">
+                        <option value="all">Toutes</option>
+                    </select>
+                </div>
+
+                <!-- Rating Filter -->
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Note Min.</label>
+                    <select id="ratingSelect" class="form-select">
+                        <option value="0">Toutes</option>
+                        <option value="4">4+ ⭐</option>
+                        <option value="4.5">4.5+ ⭐</option>
+                        <option value="5">5 ⭐</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="loader">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Analyse des données...</p>
+        </div>
+        
+        <div id="errorAlert" class="alert alert-warning" style="display:none;">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <span id="errorMsg">Erreur.</span>
+        </div>
+
+        <!-- Cards Grid -->
+        <div class="row g-4" id="cardsContainer">
+            <!-- JS will populate this -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="text-center mt-5" style="display:none;">
+            <div class="mb-3">
+                <i class="fa-regular fa-face-frown-open fa-3x text-muted opacity-50"></i>
+            </div>
+            <h4>Aucun résultat</h4>
+            <p class="text-muted">Essayez de modifier vos filtres de recherche.</p>
+            <button class="btn btn-outline-primary btn-sm" onclick="resetFilters()">Réinitialiser les filtres</button>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Détails</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    
+                    <!-- Top Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-5 mb-3 mb-md-0">
+                            <div class="position-relative">
+                                <img id="modalImage" src="" class="img-fluid rounded shadow w-100" style="max-height: 250px; object-fit: cover;" onerror="this.src='https://placehold.co/600x400?text=Image+Non+Dispo'">
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <h3 id="modalName" class="fw-bold mb-1"></h3>
+                            <div class="mb-3 d-flex align-items-center">
+                                <span id="modalRating" class="rating-badge me-2"></span>
+                                <small class="text-muted">(<span id="modalReviewCount"></span> avis)</small>
+                            </div>
+                            
+                            <ul class="list-unstyled text-muted small">
+                                <li class="mb-2"><i class="fa-solid fa-tag me-2 width-20 text-center"></i><span id="modalCategory" class="fw-semibold text-dark"></span></li>
+                                <li class="mb-2"><i class="fa-solid fa-location-dot me-2 width-20 text-center"></i><span id="modalAddress"></span></li>
+                                <li class="mb-2"><i class="fa-solid fa-phone me-2 width-20 text-center"></i><span id="modalPhone"></span></li>
+                                <li class="mb-2"><i class="fa-solid fa-globe me-2 width-20 text-center"></i><a id="modalLink" href="#" target="_blank" class="text-decoration-none">Voir sur Google Maps</a></li>
+                                <li class="mb-2" id="modalWebsiteContainer" style="display:none;"><i class="fa-solid fa-link me-2 width-20 text-center"></i><a id="modalWebsite" href="#" target="_blank" class="text-decoration-none">Site Web</a></li>
+                            </ul>
+
+                            <div id="modalKeywords" class="mt-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-reviews" type="button">Avis Clients</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-hours" type="button">Horaires</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-competitors" type="button">Concurrents</button>
+                        </li>
+                    </ul>
+
+                    <!-- Tabs Content -->
+                    <div class="tab-content p-2" id="myTabContent">
+                        
+                        <!-- Reviews -->
+                        <div class="tab-pane fade show active" id="tab-reviews">
+                            <div id="modalReviewsList"></div>
+                        </div>
+
+                        <!-- Hours -->
+                        <div class="tab-pane fade" id="tab-hours">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless">
+                                    <tbody id="modalHoursTable"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Competitors -->
+                        <div class="tab-pane fade" id="tab-competitors">
+                            <div class="list-group list-group-flush" id="modalCompetitorsList"></div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        // Note: On garde la logique de fetch pour le futur, mais on initialise avec tes données
+        const FILES_TO_LOAD = ['data1.ndjson', 'data2.ndjson', 'data3.ndjson'];
+
+        // --- 2. DONNÉES INTÉGRÉES (Tes données de massage Abbeville & Achères) ---
+        const EMBEDDED_DATA = `
+{"place_id": "ChIJMyD_wbmM3UcR6f5eWdnayhc", "name": "ALOHA Massage Bien-Etre", "reviews": 49, "rating": 5, "main_category": "Massage spa", "address": "5 Av. du Rivage, 80100 Abbeville, France", "link": "https://www.google.com/maps/place/ALOHA+Massage+Bien-Etre", "phone": "+33 6 23 34 14 56", "featured_image": "https://lh3.ggpht.com/p/AF1QipOnri7d_XiWkMxcmYire24L59RtWZAySDY4Y7PB=s1024", "hours": [{"day": "Monday", "times": ["9:30AM–8PM"]}, {"day": "Tuesday", "times": ["9:30AM–8PM"]}], "review_keywords": [{"keyword": "well-being", "count": 3}], "competitors": [{"name": "Abbeville : Relooking Abbeville", "rating": 4.5}], "featured_reviews": [{"name": "Honorine Deparme", "rating": 5, "review_text": "Une parenthèse pleine de douceur..."}]}
+{"place_id": "ChIJNyANa6ON3UcRYAhvs6h7-bs", "name": "Salon Jieli", "reviews": 12, "rating": 4.3, "main_category": "Massage spa", "address": "7 Rue Lesueur, 80100 Abbeville, France", "link": "https://www.google.com/maps/place/Salon+Jieli", "phone": "+33 7 82 49 22 19", "featured_image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=33qAdThmjx5q9bPlQU9N-Q&cb_client=search.gws-prod.gps&w=408&h=240&yaw=164.24213&pitch=0&thumbfov=100", "hours": [{"day": "Monday", "times": ["10AM–8PM"]}], "review_keywords": [{"keyword": "massage therapist", "count": 5}], "competitors": [{"name": "Les 4A'rmonies d'Elixir", "rating": 4.9}], "featured_reviews": [{"name": "Alain Delaby", "rating": 5, "review_text": "J'ai pus profiter d'un massage de 30 minutes..."}]}
+{"place_id": "ChIJrcpxAvJnI4YRMQ2iENAPImQ", "name": "La Palmera Spa", "reviews": 111, "rating": 5, "main_category": "Spa", "address": "121 N State St, Abbeville, LA 70510", "link": "https://www.google.com/maps/place/La+Palmera+Spa", "phone": "(337) 740-7422", "website": "http://www.lapalmeraspa.com/", "featured_image": "https://lh3.ggpht.com/p/AC9h4np5Yflset6inzwsaC6WiRbY78b4oaZGTaraKKSCmjpQBKT5Aw3uM-Yqc-0k8wutzc6ODkf5xHASbl845LfIhxThsf_7fBm1l1B8ptuixcuVtrHBTqU1q_8cr_MKyaicEkjch8RR1A=s1024", "hours": [{"day": "Monday", "times": ["10AM–6PM"]}], "review_keywords": [{"keyword": "facial", "count": 16}], "competitors": [{"name": "ZEN FOOT SPA", "rating": 4.4}], "featured_reviews": [{"name": "Jessica Mouton", "rating": 5, "review_text": "Every birthday, Christmas and Mother’s Day my husband..."}]}
+{"place_id": "ChIJ_xUehu1nI4YRjluRJgZRPXo", "name": "Salon 106", "reviews": 30, "rating": 4.9, "main_category": "Beauty salon", "address": "106 E Vermilion St, Abbeville, LA 70510", "link": "https://www.google.com/maps/place/Salon+106", "phone": "(337) 740-2106", "featured_image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=kQQvuDFYfOn8Ja1nFmIiOg&cb_client=search.gws-prod.gps&w=408&h=240&yaw=190.12724&pitch=0&thumbfov=100", "hours": [{"day": "Tuesday", "times": ["9:39AM–5PM"]}], "competitors": [{"name": "FS Cut & Color", "rating": 4.7}], "featured_reviews": [{"name": "Angela Brown", "rating": 5, "review_text": "Sage & Co. in Abbeville is definitely where you want to be!"}]}
+{"place_id": "ChIJGbt5l_FnI4YRIka9d69oRqw", "name": "Professional Touch of Abbeville", "reviews": 4, "rating": 5, "main_category": "Massage therapist", "address": "215 S Jefferson St, Abbeville, LA 70510", "link": "https://www.google.com/maps/place/Professional+Touch+of+Abbeville", "phone": "(337) 893-9203", "website": "http://www.professionaltouchofabbeville.com/", "featured_image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=PW93W9Hu5ksfK4oS3MPrcg&cb_client=search.gws-prod.gps&w=408&h=240&yaw=103.23565&pitch=0&thumbfov=100", "hours": [{"day": "Monday", "times": ["9AM–5PM"]}], "competitors": [{"name": "La Palmera Spa", "rating": 5}], "featured_reviews": [{"name": "Kayleigh H", "rating": 5, "review_text": "Natalie has a GIFT!!!!!"}]}
+{"place_id": "ChIJq6p6be5nI4YR954YsFLqC9o", "name": "detendez vous abbeville la", "reviews": 2, "rating": 4, "main_category": "Spa", "address": "100 S Louisiana St, Abbeville, LA 70510", "link": "https://www.google.com/maps/place/detendez+vous+abbeville+la", "phone": "(337) 740-7529", "featured_image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=fvi9zCXk84de31tejqTfdA&cb_client=search.gws-prod.gps&w=408&h=240&yaw=281.96414&pitch=0&thumbfov=100", "hours": [{"day": "Monday", "times": ["10AM–5PM"]}], "competitors": [{"name": "ZEN FOOT SPA", "rating": 4.4}], "featured_reviews": [{"name": "Tyson romero", "rating": 5, "review_text": null}]}
+{"place_id": "ChIJ17cbju1nI4YRLBGCjKyRJBI", "name": "Massage Therapy with Melanie", "reviews": 2, "rating": 5, "main_category": "Massage therapist", "address": "106 E Vermilion St, Abbeville, LA 70510", "link": "https://www.google.com/maps/place/Massage+Therapy+with+Melanie", "phone": "(337) 658-6859", "website": "http://massagebook.com/biz/massagetherapywithMelanie", "featured_image": "https://lh3.ggpht.com/p/AF1QipNEPlX3WfZptmRHaKCqut9CHKw58d8BbvIVK-dO=s1024", "hours": [{"day": "Tuesday", "times": ["9AM–5PM"]}], "competitors": [{"name": "La Palmera Spa", "rating": 5}], "featured_reviews": [{"name": "Irene Meaux", "rating": 5, "review_text": "I've been seeing Melanie for about 6 yrs..."}]}
+{"place_id": "ChIJCWDWmdSN3UcRoaXgMj6BtCo", "name": "Aux mains de Lucie", "reviews": 70, "rating": 4.9, "main_category": "Beauty salon", "address": "7 Rue Saint-Vulfran, 80100 Abbeville, France", "link": "https://www.google.com/maps/place/Aux+mains+de+Lucie", "phone": "+33 3 22 27 46 97", "website": "https://www.kalendes.com/auxmainsdelucie/#/welcome", "featured_image": "https://lh3.ggpht.com/p/AF1QipO3V9IgXLFU0QuT0Kf1keXbCW7kJfOC3rZ4zfyC=s1024", "hours": [{"day": "Monday", "times": ["1:30–6PM"]}], "review_keywords": [{"keyword": "beautician", "count": 8}], "competitors": [{"name": "L'institut", "rating": 4.7}], "featured_reviews": [{"name": "Emilie Leprêtre", "rating": 1, "review_text": "Je suis déjà allée dans cet institut pour des massages..."}]}
+{"place_id": "ChIJZTG89r715kcRZ7RdW3196Jo", "name": "Claire Maillet", "reviews": 51, "rating": 5, "main_category": "Massage spa", "address": "113 Av. de Poissy, 78260 Achères, France", "link": "https://www.google.com/maps/place/Claire+Maillet", "phone": "+33 6 41 43 43 71", "website": "http://unepetitemain.com/", "featured_image": "https://lh3.ggpht.com/p/AF1QipNippF48xJ0xKHpewpG0kWCjHNaVEXrCFm3CLoz=s1024", "hours": [{"day": "Monday", "times": ["10AM–4PM"]}], "review_keywords": [{"keyword": "workshop", "count": 10}], "competitors": [{"name": "L'instant bien-être", "rating": 5}], "featured_reviews": [{"name": "Emilie Durbas", "rating": 5, "review_text": "Nous avons réalisé un soin bain enveloppé..."}]}
+{"place_id": "ChIJTwMdwZGL5kcRq8EZy9aLgiA", "name": "Ma Parenthèse Bien-Être", "reviews": 4, "rating": 5, "main_category": "Massage spa", "address": "Av. Lénine, 78260 Achères, France", "link": "https://www.google.com/maps/place/Ma+Parenth%C3%A8se+Bien-%C3%8Atre", "phone": "+33 7 66 07 75 64", "website": "https://www.instagram.com/maparenthesebienetre_", "featured_image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=vjwVyjkmG_PTaLy2OmQEWw&cb_client=search.gws-prod.gps&w=408&h=240&yaw=124.868996&pitch=0&thumbfov=100", "hours": [{"day": "Monday", "times": ["10AM–7:30PM"]}], "competitors": [{"name": "Claire Maillet", "rating": 5}], "featured_reviews": [{"name": "edith dhont", "rating": 5, "review_text": "Un très bon moment passé avec Olivia..."}]}
+{"place_id": "ChIJadgEuTeK5kcRcV7R-aI1Eag", "name": "Institut de beauté Bodyminute", "reviews": 78, "rating": 3.6, "main_category": "Beauty salon", "address": "3 Av. Wolfgang Amadeus Mozart, 78260 Achères, France", "link": "https://www.google.com/maps/place/Institut+de+beaut%C3%A9+Bodyminute", "phone": "+33 1 39 22 13 35", "website": "https://www.bodyminute.com/instituts/acheres-3451/", "featured_image": "https://lh3.ggpht.com/p/AF1QipPxs0Um3kJE52sKTVMpDJEUUdmEsm52yC8iHJwU=s1024", "hours": [{"day": "Monday", "times": ["10AM–7PM"]}], "review_keywords": [{"keyword": "epilation", "count": 10}], "competitors": [{"name": "L'instant bien-être", "rating": 5}], "featured_reviews": [{"name": "Catherine De araujo", "rating": 5, "review_text": "Bonjour cliente depuis très longtemps..."}]}
+{"place_id": "ChIJF3BQqCeL5kcR_VpwRTDEvVA", "name": "L’adresse beauté", "reviews": 69, "rating": 5, "main_category": "Beauty salon", "address": "3 Sq. du Dr Léon Vogel, 78260 Achères, France", "link": "https://www.google.com/maps/place/L%E2%80%99adresse+beaut%C3%A9", "phone": "+33 6 61 93 07 26", "website": "https://www.planity.com/ladresse-beaute-78260-acheres", "featured_image": "https://lh3.ggpht.com/p/AF1QipOfUmJt-7Ta8hRyWoi9-eYgwSFhVmXAbkfipHs0=s1024", "hours": [{"day": "Monday", "times": ["10AM–7PM"]}], "review_keywords": [{"keyword": "elle", "count": 8}], "competitors": [{"name": "Chez Hasna", "rating": 4.6}], "featured_reviews": [{"name": "Cynthia", "rating": 5, "review_text": "J'ai fait une cure de drainage lymphatique..."}]}
+{"place_id": "ChIJiykR0Vph5kcROvnfbaS5Gfo", "name": "Paon dore de salon massage", "reviews": 36, "rating": 3.9, "main_category": "Massage spa", "address": "34 Rue de Paris, 78600 Maisons-Laffitte, France", "link": "https://www.google.com/maps/place/Paon+dore+de+salon+massage", "phone": "+33 7 51 30 82 43", "featured_image": "https://lh3.ggpht.com/p/AF1QipMLd9T13wkmbgvNIqk5l-vz4j-lNfOxfg-nk-Yy=s1024", "hours": [{"day": "Monday", "times": ["10AM–8PM"]}], "review_keywords": [{"keyword": "massage therapist", "count": 9}], "competitors": [{"name": "INSTITUT SPADOM", "rating": 4.8}], "featured_reviews": [{"name": "Rene", "rating": 4, "review_text": "Bonjour . j'ai apprécié le moment passé..."}]}
+{"place_id": "ChIJ1R0jgSH15kcRhzhMWrNIO-I", "name": "Hol'essens Massage", "reviews": 26, "rating": 4.9, "main_category": "Massage spa", "address": "14 Rue du Chemin Vert, 78700 Conflans-Sainte-Honorine, France", "link": "https://www.google.com/maps/place/Hol'essens+Massage", "phone": "+33 1 59 03 04 71", "featured_image": "https://lh3.ggpht.com/p/AF1QipP_SvqsZXHH9oJDgJwIOx7AH_Z8xFNLYrum5Eh3=s1024", "hours": [{"day": "Monday", "times": ["11:30AM–9:30PM"]}], "review_keywords": [{"keyword": "reflexology", "count": 3}], "competitors": [{"name": "Evasion Massages du Monde", "rating": 5}], "featured_reviews": [{"name": "Nathalie Delbrayelle", "rating": 5, "review_text": "Bonjour Hol'essens, je souhaiterais prendre rdv..."}]}
+{"place_id": "ChIJ_f7__1uK5kcRBgxcCvyZoKQ", "name": "Nocibé - ACHERES CC", "reviews": 121, "rating": 3.8, "main_category": "Perfume store", "address": "3 Av. Wolfgang Amadeus Mozart, 78260 Achères, France", "link": "https://www.google.com/maps/place/Nocib%C3%A9+-+ACHERES+CC", "phone": "+33 1 39 22 01 06", "website": "https://www.nocibe.fr/", "featured_image": "https://lh3.ggpht.com/p/AF1QipNonBAb_0w4AAAn1btZqxl7rZIt-Rbns230LAxA=s1024", "hours": [{"day": "Monday", "times": ["10AM–7PM"]}], "review_keywords": [{"keyword": "boutique", "count": 15}], "competitors": [{"name": "Nocibé - MONTIGNY", "rating": 3.7}], "featured_reviews": [{"name": "nadia rousseau", "rating": 2, "review_text": "Accueil parfait. Le massage plutôt agréable..."}]}
+{"place_id": "ChIJT5r14C2L5kcROgIEqOeHGuI", "name": "Nature&Beauté", "reviews": 12, "rating": 5, "main_category": "Beauty salon", "address": "36 Av. de Stalingrad, 78260 Achères, France", "link": "https://www.google.com/maps/place/Nature%26Beaut%C3%A9", "phone": "+33 9 82 75 20 81", "website": "https://www.planity.com/nature-beaute-78260-acheres", "featured_image": "https://lh3.ggpht.com/p/AF1QipO_aSAzqttR7lrDUSaxKT5LspmrRYGRgHE6v3y9=s1024", "hours": [{"day": "Tuesday", "times": ["9:30AM–7PM"]}], "review_keywords": [{"keyword": "elle", "count": 2}], "competitors": [{"name": "Bodyminute", "rating": 3.6}], "featured_reviews": [{"name": "Emilie Dvu", "rating": 5, "review_text": "Première fois pour une pose en résine..."}]}
+{"place_id": "ChIJlSR9QXaL5kcRypIO5cPN3F0", "name": "Beauty By Dby", "reviews": 56, "rating": 4.9, "main_category": "Nail salon", "address": "4 Av. Lénine, 78260 Achères, France", "link": "https://www.google.com/maps/place/Beauty+By+Dby", "phone": "+33 6 65 63 91 81", "website": "https://www.planity.com/beauty-by-dby-78260-acheres", "featured_image": "https://lh3.ggpht.com/p/AC9h4npIVeGHFordmmysK6TSuOSeh6gfrzIsgyaa9Log2DYtqb0KE-JdjrAjLbsq7CCN-jPTIkyBLKQ9g1fV0Zq2m4-K_GoW_A4J05dQzD-uPPJR3hhM-oaKPIAziVWASE4cYglHdhR0=s1024", "hours": [{"day": "Monday", "times": ["10AM–8PM"]}], "review_keywords": [{"keyword": "elle", "count": 7}], "competitors": [{"name": "Bodyminute", "rating": 3.6}], "featured_reviews": [{"name": "maryse mondot", "rating": 5, "review_text": "Déborah est très professionnelle..."}]}
+{"place_id": "ChIJwcB5LV2L5kcRSstjpRYkxZg", "name": "WANDEE MASSAGE", "reviews": 130, "rating": 5, "main_category": "Thai massage therapist", "address": "3 Rue du Repos, 78700 Conflans-Sainte-Honorine, France", "link": "https://www.google.com/maps/place/WANDEE+MASSAGE", "phone": "+33 7 55 66 24 86", "featured_image": "https://lh3.ggpht.com/p/AF1QipPRIUVwAWPKhvMXRQp2O4ZrbJlhMFN_gVuAuoxi=s1024", "hours": [{"day": "Monday", "times": ["11AM–8PM"]}], "review_keywords": [{"keyword": "oil", "count": 23}], "competitors": [{"name": "Massage 4 Dimensions", "rating": 5}], "featured_reviews": [{"name": "Alima Niangado", "rating": 5, "review_text": "I love my experience there..."}]}
+{"place_id": "ChIJbYNal-CL5kcRHFwpCSp96Ic", "name": "Espace Evasion", "reviews": 131, "rating": 4.8, "main_category": "Spa", "address": "242 Av. de l'Hautil, 78955 Carrières-sous-Poissy, France", "link": "https://www.google.com/maps/place/Espace+Evasion", "phone": "+33 1 39 70 66 21", "website": "http://www.espace-evasion.net/", "featured_image": "https://lh3.ggpht.com/p/AF1QipPBWV-f6xkIsiViatNTzjkFbjxBlga6Tvp_h7Ao=s1024", "hours": [{"day": "Tuesday", "times": ["9:30AM–7PM"]}], "review_keywords": [{"keyword": "healthcare", "count": 7}], "competitors": [{"name": "6ème sens", "rating": 4.9}], "featured_reviews": [{"name": "Leena", "rating": 5, "review_text": "Loved the experience...got a full body massage..."}]}
+{"place_id": "ChIJu2U_XA6L5kcRc71XD26mnGU", "name": "Massage du monde et Bien-être", "reviews": 5, "rating": 5, "main_category": "Massage spa", "address": "12 bis Rue aux Moines, 78700 Conflans-Sainte-Honorine, France", "link": "https://www.google.com/maps/place/Massage+du+monde+et+Bien-%C3%AAtre", "phone": "+33 6 98 77 86 39", "website": "https://massagedumondetbienetre.com/", "featured_image": "https://lh3.ggpht.com/p/AF1QipPUHRPT390shZSfwXqjMRIKq3iGUNB93pZ7Pjj1=s1024", "hours": [{"day": "Monday", "times": ["9AM–7PM"]}], "competitors": [{"name": "Massage 4 Dimensions", "rating": 5}], "featured_reviews": [{"name": "luan.lestrat", "rating": 5, "review_text": "Excellent !"}]}
+`;
+
+        // --- 3. VARIABLES GLOBALES ---
+        let allPlaces = [];
+        let filteredPlaces = [];
+        
+        // Elements DOM
+        const cardsContainer = document.getElementById('cardsContainer');
+        const searchInput = document.getElementById('searchInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const ratingSelect = document.getElementById('ratingSelect');
+        const loader = document.getElementById('loader');
+        const recordCount = document.getElementById('record-count');
+        const emptyState = document.getElementById('emptyState');
+        const sourceStatus = document.getElementById('sourceStatus');
+        const errorAlert = document.getElementById('errorAlert');
+        const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+
+        // --- 4. INITIALISATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initData();
+        });
+
+        async function initData() {
+            loader.style.display = 'block';
+            
+            // Etape 1: Essayer de charger les fichiers (ce qui échouera souvent en local)
+            // Etape 2: Si échec, utiliser les données intégrées (EMBEDDED_DATA)
+            
+            try {
+                const promises = FILES_TO_LOAD.map(f => fetch(f).then(r => r.ok ? r.text() : null).catch(() => null));
+                const results = await Promise.all(promises);
+                
+                let fileDataFound = false;
+                let rawData = "";
+
+                results.forEach(txt => {
+                    if(txt) {
+                        rawData += txt + "\n";
+                        fileDataFound = true;
+                    }
+                });
+
+                if(fileDataFound) {
+                    sourceStatus.textContent = "Fichiers locaux (data*.ndjson)";
+                    sourceStatus.className = "text-truncate d-block text-success fw-bold";
+                    processData(rawData);
+                } else {
+                    // Fallback silencieux sur les données intégrées
+                    console.log("Utilisation des données intégrées (Massage Abbeville/Achères)");
+                    sourceStatus.textContent = "Données intégrées (20 lieux)";
+                    sourceStatus.className = "text-truncate d-block text-primary fw-bold";
+                    processData(EMBEDDED_DATA);
+                }
+
+            } catch (e) {
+                console.error(e);
+                processData(EMBEDDED_DATA);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // --- 5. TRAITEMENT DES DONNÉES ---
+        function processData(textData) {
+            const lines = textData.trim().split('\n');
+            const tempPlaces = [];
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if(!trimmed) return;
+                try {
+                    tempPlaces.push(JSON.parse(trimmed));
+                } catch (err) {
+                    // Ignore lines that aren't valid JSON
+                }
+            });
+
+            // Déduplication
+            allPlaces = tempPlaces.filter((v,i,a)=>a.findIndex(v2=>(v2.place_id===v.place_id))===i);
+
+            if (allPlaces.length === 0) {
+                errorAlert.style.display = 'block';
+                document.getElementById('errorMsg').textContent = "Aucune donnée valide trouvée.";
+                return;
+            }
+
+            updateFilters();
+            applyFilters();
+        }
+
+        // --- 6. UI / FILTRES ---
+        function updateFilters() {
+            const categories = new Set(allPlaces.map(p => p.main_category).filter(Boolean));
+            categorySelect.innerHTML = '<option value="all">Toutes</option>';
+            
+            // Tri alphabétique des catégories
+            Array.from(categories).sort().forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categorySelect.appendChild(option);
+            });
+        }
+
+        function applyFilters() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCat = categorySelect.value;
+            const minRating = parseFloat(ratingSelect.value);
+
+            filteredPlaces = allPlaces.filter(place => {
+                const matchName = (place.name || "").toLowerCase().includes(searchTerm) || 
+                                  (place.address || "").toLowerCase().includes(searchTerm);
+                const matchCat = selectedCat === 'all' || place.main_category === selectedCat;
+                const matchRating = (place.rating || 0) >= minRating;
+
+                return matchName && matchCat && matchRating;
+            });
+
+            recordCount.textContent = `${filteredPlaces.length} résultats`;
+            renderCards();
+        }
+
+        function resetFilters() {
+            searchInput.value = "";
+            categorySelect.value = "all";
+            ratingSelect.value = "0";
+            applyFilters();
+        }
+
+        searchInput.addEventListener('input', applyFilters);
+        categorySelect.addEventListener('change', applyFilters);
+        ratingSelect.addEventListener('change', applyFilters);
+
+        // Helper: Etoiles
+        function getStarsHtml(rating) {
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                if (rating >= i) html += '<i class="fa-solid fa-star text-warning"></i>';
+                else if (rating >= i - 0.5) html += '<i class="fa-solid fa-star-half-stroke text-warning"></i>';
+                else html += '<i class="fa-regular fa-star text-muted opacity-25"></i>';
+            }
+            return html;
+        }
+
+        // --- 7. RENDU DES CARTES ---
+        function renderCards() {
+            cardsContainer.innerHTML = '';
+            
+            if (filteredPlaces.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            filteredPlaces.forEach(place => {
+                // Fallback image
+                const imageUrl = place.featured_image ? place.featured_image : 'https://placehold.co/600x400?text=Image';
+                
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 col-xl-3';
+                
+                col.innerHTML = `
+                    <div class="card place-card h-100">
+                        <div class="position-relative">
+                            <img src="${imageUrl}" class="card-img-top" alt="${place.name}" 
+                                 onerror="this.src='https://placehold.co/600x400?text=Image+Non+Dispo'">
+                            <span class="position-absolute top-0 end-0 m-2 badge bg-white text-dark shadow-sm">
+                                ${place.reviews || 0} avis
+                            </span>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <div class="mb-2">
+                                <span class="category-badge">${place.main_category || 'Divers'}</span>
+                            </div>
+                            
+                            <h5 class="card-title text-truncate mb-1" title="${place.name}">${place.name}</h5>
+                            <div class="mb-2 small">
+                                ${getStarsHtml(place.rating)} 
+                                <span class="fw-bold ms-1 text-muted">${place.rating || '-'}</span>
+                            </div>
+
+                            <p class="card-text small text-muted mb-3 text-truncate">
+                                <i class="fa-solid fa-location-dot me-1 text-primary"></i> 
+                                ${place.address ? place.address.split(',')[0] : 'France'}
+                            </p>
+                            
+                            <button class="btn btn-details w-100 mt-auto" onclick="openModal('${place.place_id}')">
+                                <i class="fa-solid fa-circle-info me-2"></i> Détails
+                            </button>
+                        </div>
+                    </div>
+                `;
+                cardsContainer.appendChild(col);
+            });
+        }
+
+        // --- 8. MODAL DÉTAILS ---
+        window.openModal = function(placeId) {
+            const place = allPlaces.find(p => p.place_id === placeId);
+            if (!place) return;
+
+            // Infos principales
+            document.getElementById('modalTitle').textContent = place.name;
+            document.getElementById('modalName').textContent = place.name;
+            document.getElementById('modalImage').src = place.featured_image || 'https://placehold.co/600x400?text=Image';
+            document.getElementById('modalRating').innerHTML = getStarsHtml(place.rating);
+            document.getElementById('modalReviewCount').textContent = place.reviews || 0;
+            document.getElementById('modalCategory').textContent = place.main_category || 'Non spécifié';
+            document.getElementById('modalAddress').textContent = place.address || 'Non spécifiée';
+            document.getElementById('modalPhone').textContent = place.phone || 'Non renseigné';
+            document.getElementById('modalLink').href = place.link || '#';
+
+            // Site web
+            const webContainer = document.getElementById('modalWebsiteContainer');
+            const webLink = document.getElementById('modalWebsite');
+            if(place.website) {
+                webContainer.style.display = 'block';
+                webLink.href = place.website;
+            } else {
+                webContainer.style.display = 'none';
+            }
+
+            // Mots-clés
+            const keywordsContainer = document.getElementById('modalKeywords');
+            keywordsContainer.innerHTML = '';
+            if(place.review_keywords && place.review_keywords.length > 0) {
+                place.review_keywords.forEach(k => {
+                    const span = document.createElement('span');
+                    span.className = 'keyword-tag';
+                    span.textContent = `${k.keyword} (${k.count})`;
+                    keywordsContainer.appendChild(span);
+                });
+            }
+
+            // Onglet 1 : Avis
+            const reviewsList = document.getElementById('modalReviewsList');
+            reviewsList.innerHTML = '';
+            if (place.featured_reviews && place.featured_reviews.length > 0) {
+                place.featured_reviews.forEach(rev => {
+                    const div = document.createElement('div');
+                    div.className = 'review-item';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="small">${rev.name || 'Client'}</strong>
+                            <span class="small text-muted">${rev.published_at || ''}</span>
+                        </div>
+                        <div class="mb-1">${getStarsHtml(rev.rating)}</div>
+                        <p class="small text-muted mb-0 fst-italic">"${rev.review_text ? rev.review_text : 'Pas de commentaire.'}"</p>
+                    `;
+                    reviewsList.appendChild(div);
+                });
+            } else {
+                reviewsList.innerHTML = '<p class="text-muted small p-2">Aucun avis détaillé.</p>';
+            }
+
+            // Onglet 2 : Horaires
+            const hoursTable = document.getElementById('modalHoursTable');
+            hoursTable.innerHTML = '';
+            if (place.hours && place.hours.length > 0) {
+                place.hours.forEach(h => {
+                    const tr = document.createElement('tr');
+                    // Style basique pour les heures
+                    tr.innerHTML = `<td class="text-muted">${h.day}</td><td class="fw-semibold">${h.times ? h.times.join(', ') : 'Fermé'}</td>`;
+                    hoursTable.appendChild(tr);
+                });
+            } else {
+                hoursTable.innerHTML = '<tr><td colspan="2" class="text-muted small">Horaires non disponibles</td></tr>';
+            }
+
+            // Onglet 3 : Concurrents
+            const compList = document.getElementById('modalCompetitorsList');
+            compList.innerHTML = '';
+            if (place.competitors && place.competitors.length > 0) {
+                place.competitors.forEach(c => {
+                    const div = document.createElement('div');
+                    div.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    div.innerHTML = `
+                        <span>${c.name}</span>
+                        <span class="badge bg-light text-dark border">${c.rating || '-'} ★</span>
+                    `;
+                    compList.appendChild(div);
+                });
+            } else {
+                compList.innerHTML = '<p class="text-muted small p-2">Aucun concurrent listé.</p>';
+            }
+
+            detailModal.show();
+        };
+    </script>
+</body>
+</html>
